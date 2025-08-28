@@ -29,9 +29,30 @@
 		BF1E6D462E5CE00500A097A9 /* SwipeCookUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwipeCookUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		BF7AE8142E60E5810037E093 /* Exceptions for "SwipeCook" folder in "SwipeCookTests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Data/ingredients.json,
+			);
+			target = BF1E6D3B2E5CE00500A097A9 /* SwipeCookTests */;
+		};
+		BF7AE8152E60E5810037E093 /* Exceptions for "SwipeCook" folder in "SwipeCookUITests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Data/ingredients.json,
+			);
+			target = BF1E6D452E5CE00500A097A9 /* SwipeCookUITests */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		BF1E6D2E2E5CDFFD00A097A9 /* SwipeCook */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				BF7AE8142E60E5810037E093 /* Exceptions for "SwipeCook" folder in "SwipeCookTests" target */,
+				BF7AE8152E60E5810037E093 /* Exceptions for "SwipeCook" folder in "SwipeCookUITests" target */,
+			);
 			path = SwipeCook;
 			sourceTree = "<group>";
 		};

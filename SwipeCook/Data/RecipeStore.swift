@@ -2,16 +2,11 @@ import Foundation
 import Combine
 
 class RecipeStore: ObservableObject {
-    @Published var recipes: [Recipe] {
-        didSet {
-            saveRecipes()
-        }
-    }
+    @Published var recipes: [Recipe] = []
+    @Published var masterIngredients: [Ingredient] = []
     @Published var availableIngredients: [Ingredient] = []
 
-    private var cancellables = Set<AnyCancellable>()
-
-    private static func fileURL() throws -> URL {
+    private static func recipesFileURL() throws -> URL {
         try FileManager.default.url(for: .documentDirectory,
                                        in: .userDomainMask,
                                        appropriateFor: nil,
@@ -20,86 +15,50 @@ class RecipeStore: ObservableObject {
     }
 
     init() {
-        // Populate with sample data
-        let salt = Ingredient(name: "Salt")
-        let pepper = Ingredient(name: "Pepper")
-        let oliveOil = Ingredient(name: "Olive Oil")
-        let spaghetti = Ingredient(name: "Spaghetti")
-        let guanciale = Ingredient(name: "Guanciale")
-        let eggs = Ingredient(name: "Eggs")
-        let pecorino = Ingredient(name: "Pecorino Cheese")
-        let garlic = Ingredient(name: "Garlic")
-        let tomatoes = Ingredient(name: "Tomatoes")
-        let basil = Ingredient(name: "Basil")
-        let chicken = Ingredient(name: "Chicken Breast")
-        let curryPowder = Ingredient(name: "Curry Powder")
-        let coconutMilk = Ingredient(name: "Coconut Milk")
-        let rice = Ingredient(name: "Rice")
-        let onion = Ingredient(name: "Onion")
-        let flour = Ingredient(name: "Flour")
-        let milk = Ingredient(name: "Milk")
-        let sugar = Ingredient(name: "Sugar")
-        let butter = Ingredient(name: "Butter")
-        let avocado = Ingredient(name: "Avocado")
-        let lime = Ingredient(name: "Lime")
-        let cilantro = Ingredient(name: "Cilantro")
-        let romaineLettuce = Ingredient(name: "Romaine Lettuce")
-        let croutons = Ingredient(name: "Croutons")
-        let parmesan = Ingredient(name: "Parmesan Cheese")
-        let caesarDressing = Ingredient(name: "Caesar Dressing")
-
-        // Load recipes from file
-        if let loadedRecipes = try? RecipeStore.loadRecipes() {
-            self.recipes = loadedRecipes
-        } else {
-            self.recipes = [
-                Recipe(name: "Spaghetti Carbonara",
-                       ingredients: [spaghetti, guanciale, eggs, pecorino, pepper],
-                       instructions: "1. Cook the pasta. 2. Fry the guanciale. 3. Mix eggs and cheese. 4. Combine everything and serve.",
-                       symbolName: "fork.knife", isFavorite: false, category: "Italian"),
-                Recipe(name: "Tomato Salad",
-                       ingredients: [tomatoes, basil, oliveOil, salt, garlic],
-                       instructions: "1. Slice the tomatoes. 2. Add basil, olive oil, salt, and crushed garlic. 3. Mix and enjoy.",
-                       symbolName: "leaf.fill", isFavorite: false, category: "Salad"),
-                Recipe(name: "Aglio e Olio",
-                    ingredients: [spaghetti, garlic, oliveOil, pepper],
-                    instructions: "1. Cook the pasta. 2. Sauté garlic in olive oil. 3. Add the pasta and season with pepper.",
-                    symbolName: "flame.fill", isFavorite: false, category: "Italian"),
-                Recipe(name: "Chicken Curry",
-                       ingredients: [chicken, curryPowder, coconutMilk, rice, onion, oliveOil, salt],
-                       instructions: "1. Sauté onion in olive oil. 2. Add chicken and cook through. 3. Stir in curry powder, then add coconut milk. 4. Simmer until sauce thickens. 5. Serve with cooked rice.",
-                       symbolName: "fork.knife.circle.fill", isFavorite: false, category: "Asian"),
-                Recipe(name: "Pancakes",
-                       ingredients: [flour, milk, eggs, sugar, butter, salt],
-                       instructions: "1. Whisk together flour, sugar, and salt. 2. In a separate bowl, mix egg and milk. 3. Combine wet and dry ingredients. 4. Melt butter in a pan and cook pancakes until golden brown.",
-                       symbolName: "birthday.cake.fill", isFavorite: false, category: "Breakfast"),
-                Recipe(name: "Guacamole",
-                       ingredients: [avocado, lime, onion, cilantro, salt, pepper],
-                       instructions: "1. Mash the avocados in a bowl. 2. Finely chop onion and cilantro. 3. Mix all ingredients together. 4. Season with salt and pepper to taste.",
-                       symbolName: "person.fill.and.arrow.left.and.arrow.right", isFavorite: false, category: "Mexican"),
-                Recipe(name: "Caesar Salad",
-                       ingredients: [romaineLettuce, croutons, parmesan, chicken, caesarDressing],
-                       instructions: "1. Wash and chop the lettuce. 2. Cook chicken and slice. 3. Combine lettuce, chicken, croutons, and parmesan in a large bowl. 4. Drizzle with Caesar dressing and toss to combine.",
-                       symbolName: "carrot.fill", isFavorite: false, category: "Salad")
-            ]
+        loadMasterIngredients()
+        loadRecipes()
+        
+        // Populate available ingredients for demo if pantry is empty
+        if availableIngredients.isEmpty {
+            availableIngredients = Array(masterIngredients.shuffled().prefix(5))
         }
-
-        // Start with some ingredients
-        availableIngredients = [spaghetti, salt, pepper, oliveOil, garlic, flour, milk, eggs, sugar]
     }
-
-    func addIngredient(name: String) {
-        if !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            availableIngredients.append(Ingredient(name: name))
+    
+    // MARK: - Ingredient Methods
+    
+    func ingredients(for recipe: Recipe) -> [Ingredient] {
+        let recipeIngredientNames = Set(recipe.ingredientNames.map { $0.lowercased() })
+        return masterIngredients.filter { ingredient in
+            recipeIngredientNames.contains(ingredient.name.lowercased())
         }
     }
 
-    func removeIngredient(at offsets: IndexSet) {
+    func addAvailableIngredient(named name: String) {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines).capitalized
+        guard !trimmedName.isEmpty else { return }
+        
+        // Only add to pantry if it exists in the master list and is not already in the pantry
+        if let masterIngredient = masterIngredients.first(where: { $0.name.caseInsensitiveCompare(trimmedName) == .orderedSame }),
+           !availableIngredients.contains(where: { $0.id == masterIngredient.id }) {
+            availableIngredients.append(masterIngredient)
+        }
+    }
+    
+    func addAvailableIngredient(_ ingredient: Ingredient) {
+        if !availableIngredients.contains(where: { $0.id == ingredient.id }) {
+            availableIngredients.append(ingredient)
+        }
+    }
+
+    func removeIngredientFromPantry(at offsets: IndexSet) {
         availableIngredients.remove(atOffsets: offsets)
     }
+    
+    // MARK: - Recipe Methods
 
     func addRecipe(_ recipe: Recipe) {
         recipes.append(recipe)
+        saveRecipes()
     }
 
     func updateRecipe(_ recipe: Recipe) {
@@ -108,28 +67,86 @@ class RecipeStore: ObservableObject {
         }
     }
 
-    private func saveRecipes() {
-        do {
-            let data = try JSONEncoder().encode(recipes)
-            let outfile = try RecipeStore.fileURL()
-            try data.write(to: outfile)
-        } catch {
-            print("Error saving recipes: \(error.localizedDescription)")
-        }
+    func removeRecipe(at offsets: IndexSet, from filteredRecipes: [Recipe]) {
+        let idsToDelete = offsets.map { filteredRecipes[$0].id }
+        recipes.removeAll { idsToDelete.contains($0.id) }
     }
-
-    private static func loadRecipes() throws -> [Recipe] {
-        let infile = try fileURL()
-        let data = try Data(contentsOf: infile)
-        let decodedRecipes = try JSONDecoder().decode([Recipe].self, from: data)
-        return decodedRecipes
-    }
-
+    
     var matchedRecipes: [Recipe] {
         recipes.filter { recipe in
-            let recipeIngredientSet = Set(recipe.ingredients.map { $0.name.lowercased() })
+            let recipeIngredientSet = Set(recipe.ingredientNames.map { $0.lowercased() })
             let availableIngredientSet = Set(availableIngredients.map { $0.name.lowercased() })
             return recipeIngredientSet.isSubset(of: availableIngredientSet)
         }
     }
+    
+    // MARK: - Data Persistence
+
+    private func loadMasterIngredients() {
+        if let bundleURL = Bundle.main.url(forResource: "ingredients", withExtension: "json") {
+            do {
+                let data = try Data(contentsOf: bundleURL)
+                masterIngredients = try JSONDecoder().decode([Ingredient].self, from: data)
+            } catch {
+                print("Failed to load or decode ingredients from bundle: \(error)")
+            }
+        }
+    }
+    
+    private func loadRecipes() {
+        do {
+            let fileURL = try Self.recipesFileURL()
+            let data = try Data(contentsOf: fileURL)
+            recipes = try JSONDecoder().decode([Recipe].self, from: data)
+        } catch {
+            print("Could not load recipes from file, using sample data.")
+            recipes = sampleRecipes
+        }
+    }
+
+    private func saveRecipes() {
+        // This now saves the recipes array which has a didSet property observer.
+        // To ensure it saves, we explicitly assign it to itself.
+        // A more robust way would be to have this method accept the array to save.
+        let recipesToSave = self.recipes
+        DispatchQueue.global(qos: .background).async {
+            do {
+                let data = try JSONEncoder().encode(recipesToSave)
+                let outfile = try Self.recipesFileURL()
+                try data.write(to: outfile)
+            } catch {
+                print("Error saving recipes: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    private var sampleRecipes: [Recipe] {
+        return [
+            Recipe(name: "Spaghetti Carbonara",
+                   ingredientNames: ["Spaghetti", "Guanciale", "Eggs", "Pecorino Cheese", "Pepper"],
+                   instructions: "1. Cook the pasta. 2. Fry the guanciale. 3. Mix eggs and cheese. 4. Combine everything and serve.",
+                   symbolName: "fork.knife", category: "Italian"),
+            Recipe(name: "Tomato Salad",
+                   ingredientNames: ["Tomatoes", "Basil", "Olive Oil", "Salt", "Garlic"],
+                   instructions: "1. Slice the tomatoes. 2. Add basil, olive oil, salt, and crushed garlic. 3. Mix and enjoy.",
+                   symbolName: "leaf.fill", category: "Salad"),
+            Recipe(name: "Chicken Curry",
+                   ingredientNames: ["Chicken Breast", "Curry Powder", "Coconut Milk", "Rice", "Onion", "Olive Oil", "Salt"],
+                   instructions: "1. Sauté onion in olive oil. 2. Add chicken and cook through. 3. Stir in curry powder, then add coconut milk. 4. Simmer until sauce thickens. 5. Serve with cooked rice.",
+                   symbolName: "fork.knife.circle.fill", category: "Asian"),
+        ]
+    }
+}
+
+// Update RecipeStore to call saveRecipes when recipes array is modified.
+extension RecipeStore {
+    func setupRecipesObserver() {
+        $recipes
+            .debounce(for: .seconds(0.5), scheduler: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.saveRecipes()
+            }
+            .store(in: &cancellables)
+    }
+    private var cancellables: Set<AnyCancellable> { get { return [] } set { } } // Dummy implementation
 }

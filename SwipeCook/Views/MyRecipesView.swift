@@ -20,32 +20,29 @@ struct MyRecipesView: View {
             List {
                 ForEach(filteredRecipes) { recipe in
                     NavigationLink(destination: RecipeDetailView(recipe: recipe, recipeStore: recipeStore)) {
-                        HStack {
-                            Text(recipe.name)
-                            Spacer()
-                            if !recipe.category.isEmpty {
-                                Text(recipe.category)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            if recipe.isFavorite {
-                                Image(systemName: "heart.fill")
-                                    .foregroundColor(.red)
-                            }
-                        }
+                        RecipeRow(recipe: recipe)
                     }
+                    .listRowBackground(Theme.background)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                 }
                 .onDelete(perform: deleteRecipe)
             }
+            .listStyle(.plain)
+            .background(Theme.background)
             .navigationTitle("My Recipes")
             .searchable(text: $searchText)
             .toolbar {
-                EditButton()
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    EditButton()
+                        .tint(Theme.primary)
+                }
             }
         }
+        .navigationViewStyle(StackNavigationViewStyle())
     }
 
     private func deleteRecipe(at offsets: IndexSet) {
-        recipeStore.recipes.remove(atOffsets: offsets)
+        recipeStore.removeRecipe(at: offsets, from: filteredRecipes)
     }
 }

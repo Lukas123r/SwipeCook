@@ -1,4 +1,3 @@
-
 import SwiftUI
 
 struct CreateRecipeView: View {
@@ -6,22 +5,20 @@ struct CreateRecipeView: View {
     @ObservedObject var recipeStore: RecipeStore
 
     @State private var recipeName: String = ""
-    @State private var ingredientsInput: String = ""
+    @State private var selectedIngredients: [String] = []
     @State private var instructionsInput: String = ""
     @State private var symbolName: String = "fork.knife"
     @State private var category: String = ""
+    
+    @State private var showingIngredientPicker = false
 
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text("Recipe Details")) {
                     TextField("Recipe Name", text: $recipeName)
-                    TextField("Ingredients (comma separated)", text: $ingredientsInput)
-                    TextField("Instructions", text: $instructionsInput, axis: .vertical)
-                        .lineLimit(5, reservesSpace: true)
                     TextField("Category (e.g., Italian, Breakfast)", text: $category)
                     
-                    // Simple SF Symbol picker for now
                     Picker("Symbol", selection: $symbolName) {
                         Text("Fork & Knife").tag("fork.knife")
                         Text("Leaf").tag("leaf.fill")
@@ -29,6 +26,25 @@ struct CreateRecipeView: View {
                         Text("Cake").tag("birthday.cake.fill")
                         Text("Carrot").tag("carrot.fill")
                     }
+                }
+                
+                Section(header: Text("Ingredients")) {
+                    Button(action: { showingIngredientPicker = true }) {
+                        HStack {
+                            Image(systemName: "plus.circle.fill")
+                            Text("Select Ingredients")
+                        }
+                    }
+                    
+                    ForEach(selectedIngredients, id: \.self) {
+                        ingredientName in
+                        Text(ingredientName)
+                    }
+                }
+                
+                Section(header: Text("Instructions")) {
+                    TextField("Instructions", text: $instructionsInput, axis: .vertical)
+                        .lineLimit(8, reservesSpace: true)
                 }
             }
             .navigationTitle("Create New Recipe")
@@ -43,20 +59,19 @@ struct CreateRecipeView: View {
                     Button("Save") {
                         saveRecipe()
                     }
-                    .disabled(recipeName.isEmpty || ingredientsInput.isEmpty || instructionsInput.isEmpty)
+                    .disabled(recipeName.isEmpty || selectedIngredients.isEmpty || instructionsInput.isEmpty)
                 }
+            }
+            .sheet(isPresented: $showingIngredientPicker) {
+                IngredientPickerView(selectedIngredients: $selectedIngredients, allIngredients: recipeStore.masterIngredients)
             }
         }
     }
 
     private func saveRecipe() {
-        let ingredientNames = ingredientsInput.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-        let ingredients = ingredientNames.map { Ingredient(name: $0) }
-
         let newRecipe = Recipe(
-            // id: UUID(), // FIX 1: Removed explicit id initialization as Recipe struct handles it
             name: recipeName,
-            ingredients: ingredients,
+            ingredientNames: selectedIngredients,
             instructions: instructionsInput,
             symbolName: symbolName,
             isFavorite: false,

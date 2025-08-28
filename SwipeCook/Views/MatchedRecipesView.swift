@@ -56,6 +56,9 @@ struct MatchedRecipesView: View {
             .onReceive(recipeStore.$availableIngredients) { _ in
                 self.matchedRecipes = recipeStore.matchedRecipes
             }
+            .onAppear {
+                self.matchedRecipes = recipeStore.matchedRecipes
+            }
         }
     }
 }
@@ -67,29 +70,28 @@ struct RecipeCardWrapper: View {
     @State private var translation: CGSize = .zero
     @State private var isLiked: Bool? = nil
 
-    private var rotationAngle: Angle {
-        .degrees(Double(translation.width / UIScreen.main.bounds.width * 25))
-    }
-
-    private var scale: CGFloat {
-        let progress = 1 - min(abs(translation.width) / UIScreen.main.bounds.width / 2, 0.1)
-        return max(progress, 0.9)
-    }
-
-    private var overlayColor: Color {
-        if let liked = isLiked {
-            return liked ? Color.green : Color.red
-        }
-        return .clear
-    }
-
-    private var overlayOpacity: Double {
-        let progress = min(abs(translation.width) / 100, 1)
-        return Double(progress)
-    }
-
     var body: some View {
         GeometryReader { geometry in
+            // --- Calculations moved inside GeometryReader for safety ---
+            let rotationAngle = {
+                guard geometry.size.width > 0 else { return Angle.zero }
+                return Angle.degrees(Double(translation.width / geometry.size.width * 25))
+            }()
+
+            let scale = {
+                guard geometry.size.width > 0 else { return 1.0 }
+                let progress = 1 - min(abs(translation.width) / geometry.size.width / 2, 0.1)
+                return max(progress, 0.9)
+            }()
+
+            let overlayColor: Color = {
+                if let liked = isLiked { return liked ? .green : .red }
+                return .clear
+            }()
+
+            let overlayOpacity = min(abs(translation.width) / 100, 1)
+
+            // --- View Body ---
             RecipeCardView(recipe: recipe)
                 .rotationEffect(rotationAngle)
                 .scaleEffect(scale)

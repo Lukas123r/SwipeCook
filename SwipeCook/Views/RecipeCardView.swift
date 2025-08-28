@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct RecipeCardView: View {
+    
+    
     let recipe: Recipe
 
     var body: some View {
@@ -35,7 +37,7 @@ struct RecipeCardView: View {
                         .cornerRadius(5)
                 }
 
-                Text("Ingredients: \(recipe.ingredients.map { $0.name }.joined(separator: ", "))")
+                Text("Ingredients: \(recipe.ingredientNames.joined(separator: ", "))")
                     .font(.body)
                     .foregroundColor(.white.opacity(0.8))
                     .lineLimit(2)

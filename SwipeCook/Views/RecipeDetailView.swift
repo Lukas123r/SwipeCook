@@ -34,7 +34,7 @@ struct RecipeDetailView: View {
                     .foregroundColor(Theme.text)
 
                 VStack(alignment: .leading, spacing: 10) {
-                    ForEach(recipe.ingredients) { ingredient in
+                    ForEach(recipeStore.ingredients(for: recipe)) { ingredient in
                         Text("- \(ingredient.name)")
                             .font(.body)
                             .foregroundColor(Theme.secondaryText)
